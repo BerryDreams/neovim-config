@@ -1,6 +1,5 @@
 -- 基础配置
 vim.o.number = true                -- 显示行号
-vim.o.relativenumber = true        -- 相对行号
 vim.o.expandtab = true             -- 使用空格替代 Tab
 vim.o.shiftwidth = 4               -- 缩进的宽度
 vim.o.tabstop = 4                  -- Tab 字符的宽度
@@ -13,7 +12,28 @@ vim.o.undofile = true              -- 启用撤销文件
 vim.o.hlsearch = false             -- 禁用高亮搜索
 vim.o.incsearch = true             -- 启用增量搜索
 vim.o.termguicolors = true         -- 启用终端真彩色
+vim.g.mapleader = ' '
 
+
+-- 自动保存配置
+local autocmd = vim.api.nvim_create_autocmd
+local augroup = vim.api.nvim_create_augroup
+
+local autosave_group = augroup("AutoSave", { clear = true })
+
+-- 在插入模式离开时自动保存
+autocmd("InsertLeave", {
+  group = autosave_group,
+  pattern = "*",
+  command = "silent! write"
+})
+
+-- 在失去焦点时自动保存
+autocmd("FocusLost", {
+  group = autosave_group,
+  pattern = "*",
+  command = "silent! write"
+})
 
 -- 使用 packer.nvim 来管理插件
 require('packer').startup(function()
@@ -26,20 +46,109 @@ require('packer').startup(function()
   -- 文件资源管理器
   use 'kyazdani42/nvim-tree.lua'
 
+  -- airline
+  use 'vim-airline/vim-airline'
+  use 'vim-airline/vim-airline-themes'
+
   -- LSP 插件
   use 'neovim/nvim-lspconfig'   -- LSP 配置
   use 'williamboman/mason.nvim' -- LSP 安装管理器
   use 'williamboman/mason-lspconfig.nvim' -- 将 mason 和 lspconfig 连接起来
-end)
 
+  -- 自动补全插件
+  use 'hrsh7th/nvim-cmp' -- Autocompletion plugin
+  use 'hrsh7th/cmp-nvim-lsp' -- LSP source for nvim-cmp
+  use 'hrsh7th/cmp-buffer' -- Buffer completions
+  use 'hrsh7th/cmp-path' -- Path completions
+  use 'hrsh7th/cmp-cmdline' -- Cmdline completions
+
+  -- 美化补全项目的插件
+  use 'onsails/lspkind-nvim' -- Pictograms for completion items
+  -- 代码片段引擎
+  use 'L3MON4D3/LuaSnip'
+end)
 
 -- 配置主题
 vim.cmd [[colorscheme tokyonight]]
 
-
 -- 配置 nvim-tree
 require'nvim-tree'.setup {}
 vim.api.nvim_set_keymap('n', '<C-n>', ':NvimTreeToggle<CR>', { noremap = true, silent = true })
+
+-- 配置airline
+vim.g['airline#extensions#tabline#enabled'] = 1
+vim.g['airline#extensions#tabline#formatter'] = 'default'
+
+-- 设置快捷键以切换标签页
+vim.api.nvim_set_keymap('n', '<leader>1', ':tabnext 1<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>2', ':tabnext 2<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>3', ':tabnext 3<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>4', ':tabnext 4<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>5', ':tabnext 5<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>6', ':tabnext 6<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>7', ':tabnext 7<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>8', ':tabnext 8<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>9', ':tabnext 9<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>tc', ':tabclose<CR>', { noremap = true, silent = true })
+
+
+-- 启用电源线符号（如果支持）
+vim.g.airline_powerline_fonts = 1
+
+-- 显示文件编码
+vim.g['airline#extensions#default#section_truncate_width'] = {
+    b = 80,
+    x = 80,
+    y = 80,
+    z = 80,
+}
+
+-- nvim-cmp setup
+local cmp = require'cmp'
+
+cmp.setup({
+    snippet = {
+        expand = function(args)
+            require('luasnip').lsp_expand(args.body) -- For `luasnip` users.
+        end,
+    },
+    mapping = {
+        ['<C-b>'] = cmp.mapping(cmp.mapping.scroll_docs(-4), { 'i', 'c' }),
+        ['<C-f>'] = cmp.mapping(cmp.mapping.scroll_docs(4), { 'i', 'c' }),
+        ['<C-Space>'] = cmp.mapping(cmp.mapping.complete(), { 'i', 'c' }),
+        ['<C-y>'] = cmp.config.disable, -- Specify `cmp.config.disable` if you want to remove the default `<C-y>` mapping.
+        ['<C-e>'] = cmp.mapping({
+            i = cmp.mapping.abort(),
+            c = cmp.mapping.close(),
+        }),
+        ['<CR>'] = cmp.mapping.confirm({ select = true }),
+        ['<Tab>'] = cmp.mapping(function(fallback)
+            if cmp.visible() then
+                cmp.select_next_item()
+            elseif require('luasnip').expand_or_jumpable() then
+                require('luasnip').expand_or_jump()
+            else
+                fallback()
+            end
+        end, { 'i', 's' }),
+        ['<S-Tab>'] = cmp.mapping(function(fallback)
+            if cmp.visible() then
+                cmp.select_prev_item()
+            elseif require('luasnip').jumpable(-1) then
+                require('luasnip').jump(-1)
+            else
+                fallback()
+            end
+        end, { 'i', 's' }),
+    },
+    sources = cmp.config.sources({
+        { name = 'nvim_lsp' },
+        { name = 'luasnip' },
+    }, {
+        { name = 'buffer' },
+    })
+})
+
 
 -- 配置 LSP
 require("mason").setup()
@@ -82,6 +191,5 @@ lspconfig.omnisharp.setup{
   cmd = { "omnisharp", "--languageserver", "--hostPID", tostring(vim.fn.getpid()) },
   on_attach = on_attach
 }
-
 
 
