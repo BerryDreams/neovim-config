@@ -13,6 +13,7 @@ vim.o.hlsearch = false             -- 禁用高亮搜索
 vim.o.incsearch = true             -- 启用增量搜索
 vim.o.termguicolors = true         -- 启用终端真彩色
 vim.g.mapleader = ' '
+vim.o.mouse=''
 
 
 -- 自动保存配置
@@ -42,6 +43,7 @@ require('packer').startup(function()
   -- 主题
   use 'gruvbox-community/gruvbox'
   use 'folke/tokyonight.nvim'
+  use 'EdenEast/nightfox.nvim'
 
   -- 文件资源管理器
   use 'kyazdani42/nvim-tree.lua'
@@ -66,10 +68,14 @@ require('packer').startup(function()
   use 'onsails/lspkind-nvim' -- Pictograms for completion items
   -- 代码片段引擎
   use 'L3MON4D3/LuaSnip'
+  -- 高亮
+  use { 'nvim-treesitter/nvim-treesitter', run = ':TSUpdate' }
+  -- 括号匹配
+  use "windwp/nvim-autopairs"
 end)
 
 -- 配置主题
-vim.cmd [[colorscheme tokyonight]]
+vim.cmd [[colorscheme nightfox]]
 
 -- 配置 nvim-tree
 require'nvim-tree'.setup {}
@@ -149,17 +155,40 @@ cmp.setup({
     })
 })
 
+-- 配置括号匹配
+require("nvim-autopairs").setup({
+    check_ts = true
+})
+
+-- 配置代码高亮
+require'nvim-treesitter.configs'.setup {
+  -- :TSInstallInfo 命令查看支持的语言
+  ensure_installed = {"go", "c", "vim", "lua", "yaml", "python"},
+  -- 启用代码高亮功能
+  highlight = {
+    enable = true,
+    additional_vim_regex_highlighting = false
+  },
+  -- 启用基于Treesitter的代码缩进(=) . NOTE: This is an experimental feature.
+  indent = {
+    enable = true
+  },
+  fold = {
+    enable = true,  -- 启用语法折叠
+  },
+}
+
 
 -- 配置 LSP
 require("mason").setup()
 require("mason-lspconfig").setup {
-  ensure_installed = { "clangd", "omnisharp" }, -- 需要的 LSP 服务器
+  ensure_installed = { "clangd", "omnisharp", "gopls" }, -- 需要的 LSP 服务器
 }
 
--- 快捷键配置
 local on_attach = function(client, bufnr)
   -- 使用 `:help vim.lsp.*` 获取更多信息
   local opts = { noremap=true, silent=true, buffer=bufnr }
+  client.resolved_capabilities.document_diagnostics = true
 
   -- 定义快捷键
   vim.keymap.set('n', 'gd', vim.lsp.buf.definition, opts)
@@ -182,7 +211,6 @@ local on_attach = function(client, bufnr)
   vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, opts)
 end
 
-
 local lspconfig = require'lspconfig' -- 开始配置每个服务器
 lspconfig.clangd.setup{
     on_attach = on_attach
@@ -191,5 +219,23 @@ lspconfig.omnisharp.setup{
   cmd = { "omnisharp", "--languageserver", "--hostPID", tostring(vim.fn.getpid()) },
   on_attach = on_attach
 }
-
-
+lspconfig.gopls.setup({
+    cmd = { "gopls" },
+    on_attach = function(client, bufnr)
+        -- 这里可以设置键绑定
+        local opts = { noremap=true, silent=true }
+        vim.api.nvim_buf_set_keymap(bufnr, 'n', 'gd', '<Cmd>lua vim.lsp.buf.definition()<CR>', opts)
+        vim.api.nvim_buf_set_keymap(bufnr, 'n', 'K', '<Cmd>lua vim.lsp.buf.hover()<CR>', opts)
+        vim.api.nvim_buf_set_keymap(bufnr, 'n', '<leader>rn', '<Cmd>lua vim.lsp.buf.rename()<CR>', opts)
+        -- 更多键绑定可以在这里添加
+    end,
+    settings = {
+        gopls = {
+            analyses = {
+                unusedparams = true,
+                shadow = true,
+            },
+            staticcheck = true,
+        },
+    },
+})
